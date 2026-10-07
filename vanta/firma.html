@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clave Vanta</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl-fast.min.js"></script>
+<style>
+  :root { --bg:#0e1116; --card:#171b22; --txt:#e8ecf1; --mut:#8b95a3; --acc:#2dd4a7; --err:#ff6b6b; --brd:#2a303a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:16px/1.5 system-ui,-apple-system,sans-serif; padding:16px; }
+  main { max-width:560px; margin:0 auto; }
+  h1 { font-size:22px; margin:8px 0 4px; }
+  p { color:var(--mut); margin:6px 0 14px; }
+  .card { background:var(--card); border:1px solid var(--brd); border-radius:12px; padding:14px; margin:12px 0; }
+  button { width:100%; padding:14px; font-size:16px; font-weight:600; border:0; border-radius:10px; background:var(--acc); color:#06231b; }
+  button:disabled { opacity:.4; }
+  .log div { font-size:14px; margin:4px 0; word-break:break-all; }
+  .ok { color:var(--acc); } .err { color:var(--err); }
+  .campo { margin:12px 0; }
+  .campo b { display:block; font-size:13px; color:var(--mut); }
+  .campo code { display:block; background:#0b0d11; padding:10px; border-radius:8px; word-break:break-all; font-size:13px; margin:4px 0; }
+  .campo button { padding:8px; font-size:14px; background:#2a303a; color:var(--txt); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Clave de trading para Vanta</h1>
+  <p>Crea una clave que puede operar y leer tu cuenta de Vanta (Orderly), pero <b>no retirar</b>. Tu wallet solo firma; no hay transacción ni gas.</p>
+
+  <div class="card">
+    <button id="btn">Conectar wallet y crear clave</button>
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="card" id="res" hidden>
+    <p>Copia estos tres valores en los <b>secretos del entorno</b> de Claude Code (no en el chat). Al cerrar esta página el secreto no se puede recuperar.</p>
+    <div id="campos"></div>
+  </div>
+</main>
+
+<script>
+const API = "https://api.orderly.org";
+const BROKER = "vanta_exchange";
+// Cadenas EVM que Vanta acepta (GET /v1/public/chain_info?broker_id=vanta_exchange)
+const CADENAS = [42161, 10, 8453, 5000, 1, 1329, 43114, 146, 80094, 2741, 56, 36900, 196, 4663];
+const VERIFYING = "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC";
+
+const $log = document.getElementById("log");
+function log(t, cls) { const d = document.createElement("div"); d.textContent = t; if (cls) d.className = cls; $log.appendChild(d); }
+
+const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function b58(bytes) {
+  let n = 0n; for (const b of bytes) n = n * 256n + BigInt(b);
+  let s = ""; while (n > 0n) { s = B58[Number(n % 58n)] + s; n /= 58n; }
+  for (const b of bytes) { if (b === 0) s = "1" + s; else break; }
+  return s;
+}
+
+async function api(ruta, opts) {
+  const r = await fetch(API + ruta, opts);
+  const j = await r.json();
+  if (!j.success) throw new Error(`${ruta}: ${j.message || JSON.stringify(j)}`);
+  return j.data;
+}
+
+function mostrar(nombre, valor) {
+  const c = document.createElement("div"); c.className = "campo";
+  c.innerHTML = `<b>${nombre}</b><code></code><button>Copiar</button>`;
+  c.querySelector("code").textContent = valor;
+  c.querySelector("button").onclick = async (e) => {
+    try { await navigator.clipboard.writeText(valor); e.target.textContent = "Copiado"; }
+    catch { e.target.textContent = "Mantén presionado el texto para copiar"; }
+  };
+  document.getElementById("campos").appendChild(c);
+}
+
+document.getElementById("btn").onclick = async () => {
+  const btn = document.getElementById("btn"); btn.disabled = true; $log.textContent = "";
+  try {
+    const eth = window.ethereum || window.trustwallet || window.okxwallet;
+    if (!eth) throw new Error("No hay wallet en este navegador. Abre esta página desde el navegador interno de tu app de wallet.");
+
+    const [direccion] = await eth.request({ method: "eth_requestAccounts" });
+    log("Wallet: " + direccion);
+
+    let chainId = parseInt(await eth.request({ method: "eth_chainId" }), 16);
+    if (!CADENAS.includes(chainId)) {
+      log("Red " + chainId + " no soportada por Vanta, cambiando a Arbitrum…");
+      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0xa4b1" }] });
+      chainId = 42161;
+    }
+    log("Red: " + chainId);
+
+    const cuenta = await api(`/v1/get_account?address=${direccion}&broker_id=${BROKER}`)
+      .catch(() => { throw new Error("Esta wallet no tiene cuenta en Vanta. Conéctala primero en app.vanta.exchange."); });
+    log("Cuenta Vanta: " + cuenta.account_id, "ok");
+
+    const par = nacl.sign.keyPair();
+    const orderlyKey = "ed25519:" + b58(par.publicKey);
+    const orderlySecret = "ed25519:" + b58(par.secretKey.slice(0, 32));
+
+    const ts = Date.now();
+    const message = {
+      brokerId: BROKER, chainId, orderlyKey, scope: "read,trading",
+      timestamp: ts, expiration: ts + 360 * 24 * 3600 * 1000,
+    };
+    const typed = {
+      types: {
+        EIP712Domain: [
+          { name: "name", type: "string" }, { name: "version", type: "string" },
+          { name: "chainId", type: "uint256" }, { name: "verifyingContract", type: "address" },
+        ],
+        AddOrderlyKey: [
+          { name: "brokerId", type: "string" }, { name: "chainId", type: "uint256" },
+          { name: "orderlyKey", type: "string" }, { name: "scope", type: "string" },
+          { name: "timestamp", type: "uint64" }, { name: "expiration", type: "uint64" },
+        ],
+      },
+      primaryType: "AddOrderlyKey",
+      domain: { name: "Orderly", version: "1", chainId, verifyingContract: VERIFYING },
+      message,
+    };
+    log("Firma el mensaje en tu wallet…");
+    const signature = await eth.request({ method: "eth_signTypedData_v4", params: [direccion, JSON.stringify(typed)] });
+
+    await api("/v1/orderly_key", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, signature, userAddress: direccion }),
+    });
+    log("Clave registrada en Orderly (read,trading, 360 días).", "ok");
+
+    mostrar("ORDERLY_ACCOUNT_ID", cuenta.account_id);
+    mostrar("ORDERLY_KEY", orderlyKey);
+    mostrar("ORDERLY_SECRET", orderlySecret);
+    document.getElementById("res").hidden = false;
+  } catch (e) {
+    log("Error: " + (e.message || e), "err");
+    btn.disabled = false;
+  }
+};
+</script>
+</body>
+</html>
