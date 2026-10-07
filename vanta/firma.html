@@ -19,7 +19,7 @@
   .ok { color:var(--acc); } .err { color:var(--err); }
   .campo { margin:12px 0; }
   .campo b { display:block; font-size:13px; color:var(--mut); }
-  .campo code { display:block; background:#0b0d11; padding:10px; border-radius:8px; word-break:break-all; font-size:13px; margin:4px 0; }
+  .campo code { display:block; background:#0b0d11; padding:10px; border-radius:8px; word-break:break-all; font-size:13px; margin:4px 0; white-space:pre-wrap; }
   .campo button { padding:8px; font-size:14px; background:#2a303a; color:var(--txt); }
 </style>
 </head>
@@ -34,7 +34,7 @@
   </div>
 
   <div class="card" id="res" hidden>
-    <p>Copia estos tres valores en los <b>secretos del entorno</b> de Claude Code (no en el chat). Al cerrar esta página el secreto no se puede recuperar.</p>
+    <p>Copia este script completo en <b>Editar entorno → Script de configuración</b> de Claude Code (reemplaza lo que haya) y guarda. No lo pegues en el chat. Al cerrar esta página el secreto no se puede recuperar.</p>
     <div id="campos"></div>
   </div>
 </main>
@@ -130,9 +130,16 @@ document.getElementById("btn").onclick = async () => {
     });
     log("Clave registrada en Orderly (read,trading, 360 días).", "ok");
 
-    mostrar("ORDERLY_ACCOUNT_ID", cuenta.account_id);
-    mostrar("ORDERLY_KEY", orderlyKey);
-    mostrar("ORDERLY_SECRET", orderlySecret);
+    mostrar("Script de configuración", [
+      "#!/bin/bash",
+      "mkdir -p ~/.vanta",
+      "cat > ~/.vanta/orderly.env <<'EOF'",
+      "ORDERLY_ACCOUNT_ID=" + cuenta.account_id,
+      "ORDERLY_KEY=" + orderlyKey,
+      "ORDERLY_SECRET=" + orderlySecret,
+      "EOF",
+      "chmod 600 ~/.vanta/orderly.env",
+    ].join("\n") + "\n");
     document.getElementById("res").hidden = false;
   } catch (e) {
     log("Error: " + (e.message || e), "err");
