@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firma TxFlow</title>
+<style>
+  :root { --bg:#0e1116; --card:#171b22; --txt:#e8ecf1; --mut:#8b95a3; --acc:#2dd4a7; --err:#ff6b6b; --brd:#2a303a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:16px/1.5 system-ui,-apple-system,sans-serif; padding:16px; }
+  main { max-width:560px; margin:0 auto; }
+  h1 { font-size:22px; margin:8px 0 4px; }
+  p { color:var(--mut); margin:6px 0 14px; }
+  .card { background:var(--card); border:1px solid var(--brd); border-radius:12px; padding:14px; margin:12px 0; }
+  pre { background:#0b0d11; padding:10px; border-radius:8px; white-space:pre-wrap; word-break:break-all; font-size:13px; margin:0; }
+  button { width:100%; padding:14px; font-size:16px; font-weight:600; border:0; border-radius:10px; background:var(--acc); color:#06231b; margin-top:12px; }
+  button:disabled { opacity:.4; }
+  .log div { font-size:14px; margin:4px 0; word-break:break-all; }
+  .ok { color:var(--acc); } .err { color:var(--err); }
+  #sig { margin-top:10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Autorizar agente en TxFlow</h1>
+  <p>Tu wallet va a firmar este mensaje (no es una transacción, no cuesta gas). Autoriza un agente que puede operar tu cuenta de TxFlow; no puede retirar ni transferir.</p>
+  <div class="card"><pre id="msg">(sin mensaje)</pre></div>
+  <div class="card">
+    <button id="btn" disabled>Firmar con mi wallet</button>
+    <div class="log" id="log"></div>
+    <div id="res" hidden>
+      <p>Copia esta firma y pégala en el chat con Claude:</p>
+      <pre id="sig"></pre>
+      <button id="copiar">Copiar firma</button>
+    </div>
+  </div>
+</main>
+<script>
+const $log = document.getElementById("log");
+function log(t, cls) { const d = document.createElement("div"); d.textContent = t; if (cls) d.className = cls; $log.appendChild(d); }
+
+// Los datos llegan en el fragmento (#t=base64url de {u, d}), que el navegador no envía al servidor.
+let cuenta = null, datos = null;
+try {
+  const t = new URLSearchParams(location.hash.slice(1)).get("t");
+  if (t) {
+    const b64 = t.replace(/-/g, "+").replace(/_/g, "/");
+    const j = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))));
+    cuenta = j.u; datos = j.d;
+  }
+} catch (e) { log("Link inválido: " + e.message, "err"); }
+
+const valido = datos && datos.primaryType === "ApproveAgent" && datos.domain && datos.domain.name === "TxFlow-Mainnet"
+  && datos.domain.verifyingContract === "0x0000000000000000000000000000000000000000"
+  && datos.message && datos.message.txflowNetwork === "TxFlow-Mainnet";
+
+if (valido) {
+  const m = datos.message;
+  document.getElementById("msg").textContent =
+    `Cuenta:  ${cuenta}\nAgente:  ${m.agentAddress}\nNombre:  ${m.agentName}\nRed:     ${m.txflowNetwork} (${m.chainId}), firma en cadena ${datos.domain.chainId}\nNonce:   ${m.nonce}`;
+  document.getElementById("btn").disabled = false;
+} else if (datos) {
+  log("El mensaje no es una autorización de agente de TxFlow. No lo firmes.", "err");
+}
+
+document.getElementById("btn").onclick = async () => {
+  const btn = document.getElementById("btn"); btn.disabled = true;
+  try {
+    const eth = window.ethereum || window.trustwallet || window.okxwallet;
+    if (!eth) throw new Error("No hay wallet en este navegador. Abre esta página desde el navegador de tu app de wallet.");
+    const [direccion] = await eth.request({ method: "eth_requestAccounts" });
+    log("Wallet: " + direccion);
+    if (cuenta && direccion.toLowerCase() !== cuenta.toLowerCase())
+      throw new Error("Esta wallet no es la de la cuenta (" + cuenta + "). Cambia de wallet en la app.");
+    const cadena = datos.domain.chainId;
+    if (parseInt(await eth.request({ method: "eth_chainId" }), 16) !== cadena) {
+      log("Cambiando a la red " + cadena + "…");
+      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x" + cadena.toString(16) }] });
+    }
+    const firma = await eth.request({ method: "eth_signTypedData_v4", params: [direccion, JSON.stringify(datos)] });
+    log("Firmado.", "ok");
+    document.getElementById("sig").textContent = firma;
+    document.getElementById("res").hidden = false;
+  } catch (e) {
+    log("Error: " + (e.message || e), "err");
+    btn.disabled = false;
+  }
+};
+
+document.getElementById("copiar").onclick = async (e) => {
+  try { await navigator.clipboard.writeText(document.getElementById("sig").textContent); e.target.textContent = "Copiado"; }
+  catch { e.target.textContent = "Mantén presionado el texto para copiar"; }
+};
+</script>
+</body>
+</html>

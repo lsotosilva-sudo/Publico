@@ -7,3 +7,5 @@ Páginas y herramientas públicas. No contiene claves ni datos privados.
   https://lsotosilva-sudo.github.io/Publico/vanta/firma.html
 - `lighter/firma.html` — firma con la wallet (personal_sign) el mensaje de registro de una clave de API de Lighter.
   El mensaje llega en el link (#m=...), nunca se envía a un servidor.
+- `txflow/firma.html` — firma con la wallet (eth_signTypedData_v4) el ApproveAgent de un agente de TxFlow
+  (opera, no retira). Los datos llegan en el link (#t=...), nunca se envían a un servidor.
