@@ -39,6 +39,30 @@
 const $log = document.getElementById("log");
 function log(t, cls) { const d = document.createElement("div"); d.textContent = t; if (cls) d.className = cls; $log.appendChild(d); }
 
+// Trust Wallet llego a mostrar la firma sin devolverla a la pagina (28-oct). Cada paso queda en
+// pantalla, la espera tiene tope y los intentos alternan entre request y la interfaz antigua (sendAsync).
+window.addEventListener("error", e => log("Error de la página: " + e.message, "err"));
+window.addEventListener("unhandledrejection", e => log("Error sin capturar: " + ((e.reason && e.reason.message) || e.reason), "err"));
+let intento = 0;
+log("Página actualizada el 28-oct (intentos con tope de 45 s).");
+async function firmar(eth, method, params) {
+  intento++;
+  const antigua = intento % 2 === 0 && typeof (eth.sendAsync || eth.send) === "function";
+  log(`Pidiendo la firma a la wallet (intento ${intento}${antigua ? ", vía alternativa" : ""})…`);
+  const pedir = antigua
+    ? new Promise((ok, mal) => (eth.sendAsync || eth.send).call(eth, { jsonrpc: "2.0", id: Date.now(), method, params },
+        (err, res) => err ? mal(err) : res && res.error ? mal(res.error) : ok(res && res.result)))
+    : eth.request({ method, params });
+  let reloj;
+  const tope = new Promise((_, mal) => { reloj = setTimeout(() => mal(new Error(
+    "la wallet no devolvió la firma en 45 s. Toca el botón de nuevo: el siguiente intento usa la otra vía.")), 45000); });
+  try {
+    const r = await Promise.race([pedir, tope]);
+    log("La wallet respondió.", "ok");
+    return typeof r === "string" ? r : r && typeof r.result === "string" ? r.result : JSON.stringify(r);
+  } finally { clearTimeout(reloj); }
+}
+
 // El mensaje llega en el fragmento (#m=base64url), que el navegador no envía al servidor.
 let mensaje = null;
 try {
@@ -56,10 +80,6 @@ if (mensaje && mensaje.startsWith("Register Lighter Account")) {
   log("El mensaje no es un registro de clave de Lighter. No lo firmes.", "err");
 }
 
-function hex(str) {
-  return "0x" + Array.from(new TextEncoder().encode(str), b => b.toString(16).padStart(2, "0")).join("");
-}
-
 document.getElementById("btn").onclick = async () => {
   const btn = document.getElementById("btn"); btn.disabled = true;
   try {
@@ -67,7 +87,8 @@ document.getElementById("btn").onclick = async () => {
     if (!eth) throw new Error("No hay wallet en este navegador. Abre esta página desde el navegador de tu app de wallet.");
     const [direccion] = await eth.request({ method: "eth_requestAccounts" });
     log("Wallet: " + direccion);
-    const firma = await eth.request({ method: "personal_sign", params: [hex(mensaje), direccion] });
+    // Texto plano: la wallet lo codifica igual (EIP-191) y con hex Trust Wallet se colgo el 28-oct.
+    const firma = await firmar(eth, "personal_sign", [mensaje, direccion]);
     log("Firmado.", "ok");
     document.getElementById("sig").textContent = firma;
     document.getElementById("res").hidden = false;
