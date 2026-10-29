@@ -75,11 +75,12 @@ function espiar(p, nombre) {
 }
 function vias(eth) {
   const lista = [], vistos = new Set();
-  for (const [p, nombre] of [[eth, "ethereum"], [window.trustwallet && window.trustwallet.ethereum, "trustwallet.ethereum"], [window.trustwallet, "trustwallet"]]) {
+  // Primero la via que funciono el 28-oct en Trust Wallet: window.trustwallet con sendAsync.
+  for (const [p, nombre] of [[window.trustwallet, "trustwallet"], [window.trustwallet && window.trustwallet.ethereum, "trustwallet.ethereum"], [eth, "ethereum"]]) {
     if (!p || vistos.has(p) || typeof p.request !== "function") continue;
     vistos.add(p); espiar(p, nombre);
-    lista.push({ p, nombre, antigua: false });
     if (typeof (p.sendAsync || p.send) === "function") lista.push({ p, nombre, antigua: true });
+    lista.push({ p, nombre, antigua: false });
   }
   return lista;
 }
