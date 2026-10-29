@@ -39,28 +39,58 @@
 const $log = document.getElementById("log");
 function log(t, cls) { const d = document.createElement("div"); d.textContent = t; if (cls) d.className = cls; $log.appendChild(d); }
 
-// Trust Wallet llego a mostrar la firma sin devolverla a la pagina (28-oct). Cada paso queda en
-// pantalla, la espera tiene tope y los intentos alternan entre request y la interfaz antigua (sendAsync).
+// Trust Wallet firma pero no devuelve la firma a la pagina (28-oct): eth_requestAccounts si vuelve, las
+// firmas no. Todo lo que llega del proveedor queda en pantalla, una firma vista en una respuesta cruda
+// se toma aunque el canal normal no la entregue, y los intentos rotan entre proveedores y vias.
 window.addEventListener("error", e => log("Error de la página: " + e.message, "err"));
 window.addEventListener("unhandledrejection", e => log("Error sin capturar: " + ((e.reason && e.reason.message) || e.reason), "err"));
+log("Página actualizada el 28-oct, diagnóstico (intentos con tope de 45 s).");
+let avisar = null;
+function revisar(origen, datos) {
+  let s; try { s = typeof datos === "string" ? datos : JSON.stringify(datos); } catch { return; }
+  if (!s || s.length < 3) return;
+  log(`← ${origen}: ${s.slice(0, 300)}`);
+  const m = s.match(/0x[0-9a-fA-F]{130}(?![0-9a-fA-F])/);
+  if (m && avisar) avisar(m[0]);
+}
+window.addEventListener("message", e => revisar("mensaje", e.data));
+function espiar(p, nombre) {
+  if (p.__espiado) return; p.__espiado = true;
+  const marcas = ["isTrust", "isTrustWallet", "isMetaMask", "isCoinbaseWallet", "isOkxWallet"].filter(k => p[k]);
+  log(`Proveedor ${nombre}: ${marcas.join(", ") || "sin marcas"}`);
+  for (const k of ["sendResponse", "sendError", "_handleResponse", "emit"]) {
+    const f = p[k]; if (typeof f !== "function") continue;
+    p[k] = function (...a) { revisar(nombre + "." + k, a); return f.apply(this, a); };
+  }
+}
+function vias(eth) {
+  const lista = [], vistos = new Set();
+  for (const [p, nombre] of [[eth, "ethereum"], [window.trustwallet && window.trustwallet.ethereum, "trustwallet.ethereum"], [window.trustwallet, "trustwallet"]]) {
+    if (!p || vistos.has(p) || typeof p.request !== "function") continue;
+    vistos.add(p); espiar(p, nombre);
+    lista.push({ p, nombre, antigua: false });
+    if (typeof (p.sendAsync || p.send) === "function") lista.push({ p, nombre, antigua: true });
+  }
+  return lista;
+}
 let intento = 0;
-log("Página actualizada el 28-oct (intentos con tope de 45 s).");
 async function firmar(eth, method, params) {
+  const lista = vias(eth), v = lista[intento % lista.length];
   intento++;
-  const antigua = intento % 2 === 0 && typeof (eth.sendAsync || eth.send) === "function";
-  log(`Pidiendo la firma a la wallet (intento ${intento}${antigua ? ", vía alternativa" : ""})…`);
-  const pedir = antigua
-    ? new Promise((ok, mal) => (eth.sendAsync || eth.send).call(eth, { jsonrpc: "2.0", id: Date.now(), method, params },
-        (err, res) => err ? mal(err) : res && res.error ? mal(res.error) : ok(res && res.result)))
-    : eth.request({ method, params });
+  log(`Pidiendo la firma (intento ${intento}: ${v.nombre}${v.antigua ? ", sendAsync" : ", request"})…`);
+  const pedir = v.antigua
+    ? new Promise((ok, mal) => (v.p.sendAsync || v.p.send).call(v.p, { jsonrpc: "2.0", id: Date.now(), method, params },
+        (err, res) => { revisar("callback", res || err); err ? mal(err) : res && res.error ? mal(res.error) : ok(res && res.result); }))
+    : v.p.request({ method, params });
+  const capturada = new Promise(ok => { avisar = ok; });
   let reloj;
   const tope = new Promise((_, mal) => { reloj = setTimeout(() => mal(new Error(
-    "la wallet no devolvió la firma en 45 s. Toca el botón de nuevo: el siguiente intento usa la otra vía.")), 45000); });
+    `la wallet no devolvió la firma en 45 s. Toca el botón de nuevo: el siguiente intento usa otra vía (${lista.length} en total).`)), 45000); });
   try {
-    const r = await Promise.race([pedir, tope]);
+    const r = await Promise.race([pedir, capturada, tope]);
     log("La wallet respondió.", "ok");
     return typeof r === "string" ? r : r && typeof r.result === "string" ? r.result : JSON.stringify(r);
-  } finally { clearTimeout(reloj); }
+  } finally { clearTimeout(reloj); avisar = null; }
 }
 
 // Los datos llegan en el fragmento (#t=base64url de {u, d}), que el navegador no envía al servidor.
