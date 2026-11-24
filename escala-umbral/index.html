@@ -1,0 +1,1159 @@
+<title>Escala Umbral</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<style>
+:root{
+  --paper:#F1F3F1; --surface:#FFFFFF; --surface-2:#E9EDEB;
+  --ink:#152320; --ink-2:#39514B; --muted:#5D6D68; --line:#D5DDDA; --line-2:#C2CDC9;
+  --accent:#0E6B57; --accent-soft:#DCEBE5; --accent-ink:#08483A;
+  --good:#2F7D4F; --warn:#9A6B12; --bad:#A33B2C;
+  --shadow:0 1px 2px rgba(21,35,32,.06), 0 8px 24px -16px rgba(21,35,32,.28);
+  --serif:"Fraunces",Georgia,"Times New Roman",serif;
+  --sans:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --step--1:.815rem; --step-0:1rem; --step-1:1.19rem; --step-2:1.45rem;
+  --step-3:1.8rem; --step-4:2.3rem; --step-5:3.1rem;
+  --rail:236px; --btn-ink:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --btn-ink:#08201B;
+    --paper:#0D1513; --surface:#15201D; --surface-2:#1C2926;
+    --ink:#E6EDEA; --ink-2:#BCCBC6; --muted:#94A49F; --line:#26332F; --line-2:#33433E;
+    --accent:#4FC3A3; --accent-soft:#13322B; --accent-ink:#8FE0C8;
+    --good:#5FB77F; --warn:#D3A34A; --bad:#E0836F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --btn-ink:#08201B;
+  --paper:#0D1513; --surface:#15201D; --surface-2:#1C2926;
+  --ink:#E6EDEA; --ink-2:#BCCBC6; --muted:#94A49F; --line:#26332F; --line-2:#33433E;
+  --accent:#4FC3A3; --accent-soft:#13322B; --accent-ink:#8FE0C8;
+  --good:#5FB77F; --warn:#D3A34A; --bad:#E0836F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+}
+body.mode-nino{
+  --accent:#2B4EA2; --accent-soft:#DEE6F7; --accent-ink:#1E3876;
+  --step-0:1.11rem; --step-1:1.3rem; --step-2:1.6rem;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) body.mode-nino{ --accent:#87AEF5; --accent-soft:#18243E; --accent-ink:#B4CDFB; }
+}
+:root[data-theme="dark"] body.mode-nino{ --accent:#87AEF5; --accent-soft:#18243E; --accent-ink:#B4CDFB; }
+
+*{box-sizing:border-box}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:var(--step-0); line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:var(--serif); font-weight:600; text-wrap:balance; margin:0; line-height:1.15}
+p{margin:0}
+button{font:inherit; color:inherit}
+a{color:var(--accent-ink)}
+:focus-visible{outline:2.5px solid var(--accent); outline-offset:3px; border-radius:3px}
+.mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
+.eyebrow{
+  font-family:var(--mono); font-size:.7rem; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted); font-weight:500;
+}
+
+/* ---------- shell ---------- */
+.shell{display:grid; grid-template-columns:var(--rail) minmax(0,1fr); min-height:100vh}
+.rail{
+  border-right:1px solid var(--line); background:var(--surface);
+  padding-block:24px 28px; padding-inline:20px;
+  display:flex; flex-direction:column; gap:26px; position:sticky; top:0; height:100vh; overflow:auto;
+}
+.brand{display:flex; flex-direction:column; gap:2px}
+.brand .mark{font-family:var(--serif); font-size:1.32rem; font-weight:700; letter-spacing:-.01em}
+.brand .sub{font-size:.78rem; color:var(--muted); line-height:1.35}
+.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
+.steps li{
+  display:grid; grid-template-columns:22px 1fr; gap:10px; align-items:baseline;
+  padding:7px 8px; border-radius:6px; color:var(--muted); font-size:.9rem;
+}
+.steps li .n{font-family:var(--mono); font-size:.75rem}
+.steps li[data-state="done"]{color:var(--ink-2)}
+.steps li[data-state="done"] .n::after{content:"✓"; margin-left:1px}
+.steps li[data-state="active"]{background:var(--accent-soft); color:var(--accent-ink); font-weight:600}
+.rail .foot{margin-top:auto; font-size:.75rem; color:var(--muted); display:flex; flex-direction:column; gap:8px}
+.linkbtn{background:none; border:none; padding:0; text-align:left; color:var(--muted); text-decoration:underline; text-underline-offset:3px; cursor:pointer; font-size:.75rem}
+.linkbtn:hover{color:var(--ink)}
+
+.main{min-width:0; display:flex; flex-direction:column}
+.topbar{
+  position:sticky; top:0; z-index:5; background:color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter:blur(8px); border-bottom:1px solid var(--line);
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding-block:10px; padding-inline:clamp(16px,4vw,56px); min-height:52px;
+}
+.topbar[hidden]{display:none!important}
+.topbar .grow{flex:1 1 auto; min-width:40px}
+.clock{
+  font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:1rem; font-weight:500;
+  padding:3px 10px; border:1px solid var(--line-2); border-radius:999px; background:var(--surface);
+}
+.clock[data-low="1"]{color:var(--bad); border-color:var(--bad)}
+.pcount{font-family:var(--mono); font-size:.8rem; color:var(--muted)}
+.bar{height:4px; background:var(--surface-2); border-radius:999px; overflow:hidden; width:120px}
+.bar > i{display:block; height:100%; background:var(--accent); transition:width .28s ease}
+
+.page{padding-inline:clamp(16px,4vw,56px); padding-block:clamp(22px,3.4vw,44px) 72px; width:100%}
+.wrap{max-width:64ch; margin-inline:auto; display:flex; flex-direction:column; gap:22px}
+.wrap.wide{max-width:82ch}
+
+/* ---------- home ---------- */
+.hero{display:flex; flex-direction:column; gap:14px; max-width:62ch}
+.hero h1{font-size:var(--step-5); letter-spacing:-.02em; line-height:1.02}
+.hero .lede{font-size:var(--step-1); color:var(--ink-2); max-width:56ch}
+.rule{height:1px; background:var(--line); border:0; margin:0}
+.picks{display:grid; grid-template-columns:repeat(auto-fit,minmax(258px,1fr)); gap:16px}
+.pick{
+  display:flex; flex-direction:column; gap:10px; text-align:left; cursor:pointer;
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  padding:20px 20px 18px; transition:border-color .18s, transform .18s;
+}
+.pick:hover{border-color:var(--accent); transform:translateY(-2px)}
+.pick h3{font-size:var(--step-2)}
+.pick .who{font-size:.88rem; color:var(--muted)}
+.pick .go{margin-top:4px; font-family:var(--mono); font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent-ink)}
+.specs{display:flex; gap:14px; flex-wrap:wrap; font-size:.8rem; color:var(--muted); font-family:var(--mono)}
+.specs span{white-space:nowrap}
+
+.struct{border-top:1px solid var(--line); display:flex; flex-direction:column}
+.struct .row{
+  display:grid; grid-template-columns:26px 1.1fr 1fr auto; gap:14px; align-items:baseline;
+  padding-block:12px; border-bottom:1px solid var(--line); font-size:.93rem;
+}
+.struct .row .n{font-family:var(--mono); font-size:.76rem; color:var(--muted)}
+.struct .row .nm{font-weight:600}
+.struct .row .ds{color:var(--muted); font-size:.88rem}
+.struct .row .tm{font-family:var(--mono); font-size:.78rem; color:var(--muted); white-space:nowrap}
+
+.note{
+  background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--warn);
+  border-radius:0 8px 8px 0; padding:14px 16px; font-size:.9rem; color:var(--ink-2);
+  display:flex; flex-direction:column; gap:6px;
+}
+.note strong{color:var(--ink)}
+
+/* ---------- items ---------- */
+.qhead{display:flex; flex-direction:column; gap:6px}
+.qtext{font-family:var(--serif); font-size:var(--step-3); line-height:1.25; text-wrap:balance}
+.qsub{color:var(--muted); font-size:.9rem}
+.opts{display:flex; flex-direction:column; gap:8px}
+.opt{
+  display:grid; grid-template-columns:26px 1fr; gap:12px; align-items:center; text-align:left;
+  background:var(--surface); border:1px solid var(--line); border-radius:8px;
+  padding:13px 15px; cursor:pointer; transition:border-color .15s, background .15s;
+  font-size:var(--step-0);
+}
+.opt:hover{border-color:var(--line-2); background:var(--surface-2)}
+.opt .k{font-family:var(--mono); font-size:.76rem; color:var(--muted)}
+.opt[aria-pressed="true"]{border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent)}
+.opt[aria-pressed="true"] .k{color:var(--accent-ink)}
+
+.matrix-wrap{display:flex; flex-direction:column; gap:20px; align-items:center}
+.matrix{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:6px; background:var(--line);
+  border:1px solid var(--line); border-radius:8px; padding:6px; width:min(330px,80vw);
+}
+.cell{background:var(--surface); aspect-ratio:1/1; display:grid; place-items:center; border-radius:3px; color:var(--ink)}
+.cell.blank{background:var(--surface-2); position:relative}
+.cell.blank::after{content:"?"; font-family:var(--serif); font-size:1.7rem; color:var(--muted)}
+.cellsvg{width:82%; height:82%; display:block}
+.figopts{display:grid; grid-template-columns:repeat(6,1fr); gap:8px; width:min(560px,100%)}
+.figopt{
+  background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:6px 4px 4px;
+  cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; color:var(--ink);
+  transition:border-color .15s, background .15s;
+}
+.figopt:hover{border-color:var(--line-2); background:var(--surface-2)}
+.figopt[aria-pressed="true"]{border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent)}
+.figopt .k{font-family:var(--mono); font-size:.68rem; color:var(--muted)}
+.figopt .cellsvg{width:100%; height:auto; aspect-ratio:1/1}
+@media (max-width:560px){ .figopts{grid-template-columns:repeat(3,1fr)} }
+
+.actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding-top:4px}
+.btn{
+  border:1px solid var(--accent); background:var(--accent); color:var(--btn-ink);
+  border-radius:7px; padding:11px 22px; font-weight:600; cursor:pointer;
+  transition:filter .15s, transform .1s; font-size:var(--step-0);
+}
+.btn:hover{filter:brightness(1.08)}
+.btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.42; cursor:not-allowed; filter:none}
+.btn.ghost{background:transparent; color:var(--ink-2); border-color:var(--line-2)}
+.btn.ghost:hover{border-color:var(--ink-2); background:var(--surface)}
+
+/* ---------- digit span ---------- */
+.stage{
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  min-height:190px; display:grid; place-items:center; padding:26px; text-align:center;
+}
+.digit{font-family:var(--mono); font-size:clamp(3.2rem,12vw,5.2rem); font-weight:500; letter-spacing:.04em; line-height:1}
+.digit.dim{color:var(--line-2)}
+.spaninput{
+  font-family:var(--mono); font-size:2rem; letter-spacing:.3em; text-align:center;
+  width:min(340px,90%); padding:10px 8px; border:1px solid var(--line-2); border-radius:8px;
+  background:var(--paper); color:var(--ink);
+}
+.pad{display:grid; grid-template-columns:repeat(5,1fr); gap:8px; width:min(420px,100%); margin-inline:auto}
+.pad button{
+  background:var(--surface); border:1px solid var(--line-2); border-radius:8px; padding:14px 0;
+  font-family:var(--mono); font-size:1.15rem; cursor:pointer;
+}
+.pad button:hover{background:var(--surface-2)}
+.pad button.wide{grid-column:span 2}
+.trialmeta{font-family:var(--mono); font-size:.78rem; color:var(--muted)}
+
+/* ---------- coding ---------- */
+.keytable{
+  display:grid; gap:6px; background:var(--line); border:1px solid var(--line);
+  border-radius:8px; padding:6px; width:100%; overflow-x:auto;
+}
+.keytable .kc{background:var(--surface); border-radius:4px; padding:6px 2px; text-align:center; color:var(--ink)}
+.keytable .kc svg{width:34px; height:34px}
+.keytable .kc .d{font-family:var(--mono); font-size:1rem; font-weight:600; border-top:1px solid var(--line); margin-top:4px; padding-top:3px}
+.stream{display:flex; gap:8px; align-items:flex-end; justify-content:center; flex-wrap:nowrap; overflow:hidden}
+.sitem{
+  background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:8px; color:var(--ink);
+  opacity:.42; transition:opacity .15s;
+}
+.sitem svg{width:36px; height:36px; display:block}
+.sitem.cur{opacity:1; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); transform:scale(1.18)}
+.sitem.done{opacity:.15}
+.hitline{font-family:var(--mono); font-size:.8rem; color:var(--muted); text-align:center}
+
+/* ---------- results ---------- */
+.score-hero{
+  background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:26px 26px 22px;
+  display:grid; grid-template-columns:minmax(0,auto) minmax(0,1fr); gap:26px; align-items:center; box-shadow:var(--shadow);
+}
+@media (max-width:620px){ .score-hero{grid-template-columns:1fr; gap:16px} }
+.bignum{display:flex; flex-direction:column; gap:2px}
+.bignum .v{font-family:var(--mono); font-size:clamp(3.4rem,9vw,4.6rem); font-weight:600; line-height:1; letter-spacing:-.03em}
+.bignum .lab{font-family:var(--mono); font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+.bignum .ci{font-family:var(--mono); font-size:.82rem; color:var(--muted)}
+.class-pill{
+  display:inline-block; align-self:flex-start; padding:3px 11px; border-radius:999px;
+  background:var(--accent-soft); color:var(--accent-ink); font-weight:600; font-size:.85rem;
+}
+.gauss{width:100%; height:auto; display:block}
+.gauss .gtick{font-family:var(--mono); font-size:11px; fill:var(--muted)}
+.gauss .gmark{font-family:var(--mono); font-size:13px; font-weight:600; fill:var(--ink)}
+.idxlist{display:flex; flex-direction:column; border-top:1px solid var(--line)}
+.idxrow{display:grid; grid-template-columns:minmax(140px,1.1fr) minmax(0,2fr) 62px 52px; gap:14px; align-items:center; padding-block:11px; border-bottom:1px solid var(--line)}
+.idxrow .nm{font-weight:600; font-size:.94rem}
+.idxrow .nm small{display:block; font-weight:400; color:var(--muted); font-size:.78rem}
+.idxrow .num{font-family:var(--mono); font-variant-numeric:tabular-nums; text-align:right; font-size:.95rem}
+.idxrow .pc{font-family:var(--mono); text-align:right; font-size:.8rem; color:var(--muted)}
+.track{position:relative; height:9px; background:var(--surface-2); border-radius:999px}
+.track i{position:absolute; top:-3px; width:3px; height:15px; background:var(--ink); border-radius:2px}
+.track u{position:absolute; top:0; height:9px; background:var(--accent); opacity:.32; border-radius:999px}
+.track b{position:absolute; top:-2px; width:1px; height:13px; background:var(--line-2)}
+@media (max-width:560px){ .idxrow{grid-template-columns:1fr 58px 46px} .idxrow .track{grid-column:1/-1} }
+.tablecard{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:6px 18px 10px}
+.readout{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px}
+.readout .r{background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:12px 14px}
+.readout .r .k{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted)}
+.readout .r .v{font-family:var(--mono); font-size:1.28rem; font-weight:500}
+details.meth{border:1px solid var(--line); border-radius:8px; background:var(--surface); padding:12px 16px}
+details.meth summary{cursor:pointer; font-weight:600; font-family:var(--serif); font-size:var(--step-1)}
+details.meth > div{padding-top:10px; display:flex; flex-direction:column; gap:10px; font-size:.92rem; color:var(--ink-2)}
+details.meth code{font-family:var(--mono); font-size:.85em; background:var(--surface-2); padding:1px 5px; border-radius:4px}
+.tbl{width:100%; border-collapse:collapse; font-size:.88rem}
+.tbl th,.tbl td{text-align:left; padding:7px 10px 7px 0; border-bottom:1px solid var(--line)}
+.tbl th{font-family:var(--mono); font-size:.7rem; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); font-weight:500}
+.tbl td.n{font-family:var(--mono); font-variant-numeric:tabular-nums; text-align:right; padding-right:0}
+.scroller{overflow-x:auto}
+
+@media (max-width:840px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static; height:auto; flex-direction:row; align-items:center; gap:16px; overflow-x:auto; padding-block:12px; border-right:0; border-bottom:1px solid var(--line)}
+  .rail .foot{display:none}
+  .brand .sub{display:none}
+  .steps{flex-direction:row; gap:4px}
+  .steps li{grid-template-columns:auto; white-space:nowrap; font-size:.8rem}
+  .steps li span.nm{display:none}
+  .steps li[data-state="active"] span.nm{display:inline}
+}
+@media (prefers-reduced-motion:reduce){ *{transition:none!important; animation:none!important} }
+@media print{
+  .rail,.topbar,.actions,.no-print{display:none!important}
+  body{background:#fff}
+  .page{padding:0}
+}
+#patdefs{position:absolute; width:0; height:0; color:var(--ink)}
+</style>
+
+<svg id="patdefs" aria-hidden="true"><defs>
+  <pattern id="pat-hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <line x1="0" y1="0" x2="0" y2="7" stroke="currentColor" stroke-width="2.6"/>
+  </pattern>
+  <pattern id="pat-dot" width="7" height="7" patternUnits="userSpaceOnUse">
+    <circle cx="3.5" cy="3.5" r="1.5" fill="currentColor"/>
+  </pattern>
+</defs></svg>
+
+<div class="shell">
+  <nav class="rail" aria-label="Progreso de la aplicación">
+    <div class="brand">
+      <span class="mark">Escala Umbral</span>
+      <span class="sub">Batería de aptitudes cognitivas · formas A (adultos) e I (8 años)</span>
+    </div>
+    <ol class="steps" id="steps"></ol>
+    <div class="foot">
+      <button class="linkbtn" id="btn-restart" type="button">Volver al inicio</button>
+      <span id="foot-note">Sin diagnóstico clínico.</span>
+    </div>
+  </nav>
+  <div class="main">
+    <header class="topbar" id="topbar" hidden>
+      <span class="eyebrow" id="tb-name">—</span>
+      <span class="pcount" id="tb-count"></span>
+      <span class="bar" aria-hidden="true"><i id="tb-bar" style="width:0%"></i></span>
+      <span class="grow"></span>
+      <span class="clock mono" id="tb-clock" hidden>00:00</span>
+    </header>
+    <main class="page" id="page"></main>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   Escala Umbral — batería de aptitudes cognitivas
+   Forma A: adultos (16+).  Forma I: niños de 8 años (8;0–8;11).
+   Puntuación: CI de desviación (M=100, DE=15) sobre puntuaciones
+   escalares (M=10, DE=3) por prueba.
+   ============================================================ */
+
+/* ---------- utilidades ---------- */
+function mulberry32(a){return function(){a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function shuffled(arr,seed){const r=mulberry32(seed);const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));const t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function erf(x){const s=x<0?-1:1;x=Math.abs(x);const a1=.254829592,a2=-.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=.3275911;const t=1/(1+p*x);const y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);return s*y;}
+function cdf(z){return .5*(1+erf(z/Math.SQRT2));}
+function pctText(p){if(p>=99.5)return">99";if(p<=0.5)return"<1";return String(Math.round(p));}
+function mmss(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
+const LETTERS=["A","B","C","D","E","F"];
+
+/* ---------- figuras (matrices y claves) ---------- */
+const LAYOUTS={1:[[50,50]],2:[[28,50],[72,50]],3:[[50,26],[28,72],[72,72]],4:[[28,28],[72,28],[28,72],[72,72]]};
+function polyPoints(n,r,startDeg){let p=[];for(let i=0;i<n;i++){const a=(startDeg+i*360/n)*Math.PI/180;p.push((r*Math.cos(a)).toFixed(2)+","+(r*Math.sin(a)).toFixed(2));}return p.join(" ");}
+function starPoints(r){let p=[];for(let i=0;i<10;i++){const rr=i%2?r*.44:r;const a=(-90+i*36)*Math.PI/180;p.push((rr*Math.cos(a)).toFixed(2)+","+(rr*Math.sin(a)).toFixed(2));}return p.join(" ");}
+function shapeMarkup(shape,r,fill){
+  const f = fill==="solid"?"currentColor" : fill==="hatch"?"url(#pat-hatch)" : fill==="dot"?"url(#pat-dot)" : "none";
+  const att=`fill="${f}" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"`;
+  switch(shape){
+    case "circle":   return `<circle cx="0" cy="0" r="${r}" ${att}/>`;
+    case "square":   return `<rect x="${-r*.88}" y="${-r*.88}" width="${r*1.76}" height="${r*1.76}" rx="2" ${att}/>`;
+    case "triangle": return `<polygon points="${polyPoints(3,r,-90)}" ${att}/>`;
+    case "diamond":  return `<polygon points="${polyPoints(4,r,-90)}" ${att}/>`;
+    case "hex":      return `<polygon points="${polyPoints(6,r,-90)}" ${att}/>`;
+    case "star":     return `<polygon points="${starPoints(r)}" ${att}/>`;
+    case "arrow":    return `<polygon points="0,${-r} ${r*.72},${-r*.05} ${r*.28},${-r*.05} ${r*.28},${r} ${-r*.28},${r} ${-r*.28},${-r*.05} ${-r*.72},${-r*.05}" ${att}/>`;
+    case "cross":    return `<polygon points="${-r*.3},${-r} ${r*.3},${-r} ${r*.3},${-r*.3} ${r},${-r*.3} ${r},${r*.3} ${r*.3},${r*.3} ${r*.3},${r} ${-r*.3},${r} ${-r*.3},${r*.3} ${-r},${r*.3} ${-r},${-r*.3} ${-r*.3},${-r*.3}" ${att}/>`;
+    default:         return `<circle cx="0" cy="0" r="${r}" ${att}/>`;
+  }
+}
+function cellSVG(a){
+  if(!a) return "";
+  const pts=LAYOUTS[a.count]||LAYOUTS[1];
+  const base=a.count===1?30:(a.count===2?18:17);
+  const r=base*(a.size==null?1:a.size);
+  let out="";
+  for(const p of pts) out+=`<g transform="translate(${p[0]},${p[1]}) rotate(${a.rot||0})">${shapeMarkup(a.shape,r,a.fill)}</g>`;
+  return `<svg viewBox="0 0 100 100" class="cellsvg" aria-hidden="true">${out}</svg>`;
+}
+function sameAttrs(a,b){return a.shape===b.shape&&a.count===b.count&&a.fill===b.fill&&(a.rot||0)===(b.rot||0)&&(a.size==null?1:a.size)===(b.size==null?1:b.size);}
+
+/* Reglas de las matrices. Cada regla devuelve los atributos de la celda (fila, col). */
+const SH3=["circle","square","triangle"], SH3b=["hex","diamond","star"], F3=["none","solid","hatch"];
+const MATRIX_A=[
+  {r:(i,j)=>({shape:"circle",count:j+1,fill:"solid",rot:0})},
+  {r:(i,j)=>({shape:SH3[i],count:1,fill:F3[j],rot:0})},
+  {r:(i,j)=>({shape:SH3[(i+j)%3],count:1,fill:"none",rot:0})},
+  {r:(i,j)=>({shape:SH3[i],count:j+1,fill:"none",rot:0})},
+  {r:(i,j)=>({shape:"arrow",count:1,fill:F3[i],rot:j*45})},
+  {r:(i,j)=>({shape:SH3b[i],count:1,fill:"solid",rot:0,size:1-j*.22})},
+  {r:(i,j)=>({shape:SH3[(i+j)%3],count:1,fill:F3[(i+2*j)%3],rot:0})},
+  {r:(i,j)=>({shape:"square",count:((i+j)%3)+1,fill:F3[j],rot:0})},
+  {r:(i,j)=>({shape:SH3b[j],count:3-j,fill:F3[i],rot:0})},
+  {r:(i,j)=>({shape:"arrow",count:1,fill:"none",rot:((i+j)%4)*45,size:1-((i*2)%3)*.16})},
+  {r:(i,j)=>({shape:SH3[(i+2*j)%3],count:j+1,fill:F3[i],rot:0})},
+  {r:(i,j)=>({shape:"cross",count:((i+j)%4)+1,fill:F3[(i+j)%3],rot:0})},
+  {r:(i,j)=>({shape:SH3b[(i+j)%3],count:1,fill:F3[(2*i+j)%3],rot:j*45,size:1-i*.14})},
+  {r:(i,j)=>({shape:"hex",count:((i+2*j)%3)+1,fill:F3[(i+j)%3],rot:0})},
+  {r:(i,j)=>({shape:SH3[(i+j)%3],count:((2*i+j)%3)+1,fill:F3[(i+2*j)%3],rot:0})}
+];
+const MATRIX_I=[
+  {r:(i,j)=>({shape:"circle",count:j+1,fill:"solid",rot:0})},
+  {r:(i,j)=>({shape:SH3[j],count:1,fill:"none",rot:0})},
+  {r:(i,j)=>({shape:"square",count:1,fill:F3[j],rot:0})},
+  {r:(i,j)=>({shape:"star",count:1,fill:"solid",rot:0,size:1-j*.24})},
+  {r:(i,j)=>({shape:SH3[i],count:j+1,fill:"none",rot:0})},
+  {r:(i,j)=>({shape:SH3[(i+j)%3],count:1,fill:"none",rot:0})},
+  {r:(i,j)=>({shape:"arrow",count:1,fill:"solid",rot:j*90})},
+  {r:(i,j)=>({shape:"diamond",count:3-j,fill:"none",rot:0})},
+  {r:(i,j)=>({shape:SH3b[i],count:1,fill:F3[j],rot:0})},
+  {r:(i,j)=>({shape:"triangle",count:((i+j)%3)+1,fill:"solid",rot:0})},
+  {r:(i,j)=>({shape:SH3[(i+j)%3],count:j+1,fill:"none",rot:0})},
+  {r:(i,j)=>({shape:SH3b[(i+j)%3],count:1,fill:F3[i],rot:0})}
+];
+const ALLSHAPES=["circle","square","triangle","diamond","hex","star","cross","arrow"];
+function buildMatrixItem(spec,idx){
+  const grid=[]; for(let i=0;i<3;i++){const row=[]; for(let j=0;j<3;j++) row.push(spec.r(i,j)); grid.push(row);}
+  const correct=grid[2][2];
+  const cands=[];
+  const add=a=>{ if(!a) return; if(sameAttrs(a,correct)) return; if(cands.some(x=>sameAttrs(x,a))) return; cands.push(a); };
+  add(grid[2][1]); add(grid[1][2]); add(grid[1][1]); add(grid[0][2]); add(grid[2][0]);
+  add(Object.assign({},correct,{count:(correct.count%4)+1}));
+  add(Object.assign({},correct,{count:correct.count===1?2:correct.count-1}));
+  add(Object.assign({},correct,{fill:F3[(F3.indexOf(correct.fill)+1+3)%3]}));
+  add(Object.assign({},correct,{fill:correct.fill==="dot"?"solid":"dot"}));
+  add(Object.assign({},correct,{shape:ALLSHAPES[(ALLSHAPES.indexOf(correct.shape)+3)%ALLSHAPES.length]}));
+  add(Object.assign({},correct,{shape:ALLSHAPES[(ALLSHAPES.indexOf(correct.shape)+5)%ALLSHAPES.length]}));
+  if(correct.shape!=="circle") add(Object.assign({},correct,{rot:((correct.rot||0)+45)%360}));
+  add(Object.assign({},correct,{size:(correct.size==null?1:correct.size)*.72}));
+  const picked=shuffled(cands,idx*977+13).slice(0,5);
+  const opts=shuffled([correct].concat(picked),idx*131+7);
+  return {grid:grid, options:opts, answer:opts.findIndex(o=>sameAttrs(o,correct))};
+}
+
+/* ---------- bancos de ítems ---------- */
+const VERBAL_A=[
+  {q:"Guante es a mano como zapato es a…",o:["Oreja","Pie","Calcetín","Cordón"],a:1},
+  {q:"Médico es a hospital como profesor es a…",o:["Libro","Examen","Escuela","Alumno"],a:2},
+  {q:"Reloj es a tiempo como termómetro es a…",o:["Mercurio","Temperatura","Fiebre","Clima"],a:1},
+  {q:"Isla es a agua como oasis es a…",o:["Palmera","Camello","Arena","Desierto"],a:3},
+  {q:"¿En qué se parecen la envidia y el orgullo?",o:["Son virtudes","Son emociones","Son enfermedades","Son conductas visibles"],a:1},
+  {q:"Semilla es a árbol como huevo es a…",o:["Nido","Cáscara","Ave","Granja"],a:2},
+  {q:"Escultor es a cincel como pintor es a…",o:["Lienzo","Pincel","Museo","Color"],a:1},
+  {q:"¿En qué se parecen un puerto y un aeropuerto?",o:["Ambos están junto al mar","Ambos son de hormigón","Ambos son puntos de entrada y salida de transporte","En ambos se pagan impuestos"],a:2},
+  {q:"Efímero es a duradero como escaso es a…",o:["Breve","Raro","Abundante","Pequeño"],a:2},
+  {q:"Termita es a madera como polilla es a…",o:["Lana","Piedra","Agua","Vidrio"],a:0},
+  {q:"Prólogo es a novela como preámbulo es a…",o:["Poema","Ley","Canción","Receta"],a:1},
+  {q:"Cauteloso es a imprudente como locuaz es a…",o:["Hablador","Parco","Amable","Lento"],a:1}
+];
+const NUMERO_A=[
+  {q:"2, 4, 6, 8, …",o:["9","10","12","14"],a:1},
+  {q:"3, 6, 12, 24, …",o:["36","42","48","50"],a:2},
+  {q:"1, 4, 9, 16, …",o:["20","24","25","36"],a:2},
+  {q:"81, 27, 9, 3, …",o:["0","1","2","3"],a:1},
+  {q:"2, 3, 5, 8, 13, …",o:["18","20","21","26"],a:2},
+  {q:"7, 10, 9, 12, 11, …",o:["10","13","14","15"],a:2},
+  {q:"2, 6, 12, 20, 30, …",o:["36","40","42","44"],a:2},
+  {q:"5, 11, 23, 47, …",o:["59","94","95","96"],a:2},
+  {q:"100, 96, 88, 72, …",o:["56","48","40","36"],a:2},
+  {q:"Un artículo cuesta $12.000 y tiene un 25 % de descuento. ¿Cuánto se paga?",o:["$8.000","$9.000","$9.600","$10.000"],a:1},
+  {q:"Un tren recorre 240 km en 3 horas. A la misma velocidad, ¿cuánto recorre en 5 horas?",o:["320 km","360 km","400 km","420 km"],a:2},
+  {q:"Si 4 máquinas fabrican 4 piezas en 4 minutos, ¿cuánto tardan 8 máquinas en fabricar 8 piezas?",o:["2 minutos","4 minutos","8 minutos","16 minutos"],a:1},
+  {q:"Un precio sube un 20 % y después baja un 20 %. Respecto del precio inicial, el final es…",o:["Igual","Un 4 % menor","Un 4 % mayor","Un 20 % menor"],a:1}
+];
+const VERBAL_I=[
+  {q:"Guante es a mano como zapato es a…",o:["Oreja","Pie","Nariz","Mesa"],a:1},
+  {q:"El perro ladra. El gato…",o:["Maúlla","Muge","Relincha","Canta"],a:0},
+  {q:"¿En qué se parecen una manzana y una pera?",o:["Las dos son frutas","Las dos son rojas","Las dos son verduras","Las dos son dulces de tienda"],a:0},
+  {q:"Pájaro es a nido como abeja es a…",o:["Miel","Flor","Colmena","Ala"],a:2},
+  {q:"Día es a noche como verano es a…",o:["Sol","Invierno","Lluvia","Playa"],a:1},
+  {q:"Grande es a pequeño como rápido es a…",o:["Ligero","Fuerte","Lento","Alto"],a:2},
+  {q:"¿En qué se parecen un auto y una bicicleta?",o:["Los dos tienen motor","Los dos sirven para transportarse","Los dos tienen puertas","Los dos usan bencina"],a:1},
+  {q:"Pez es a agua como pájaro es a…",o:["Aire","Tierra","Árbol","Jaula"],a:0},
+  {q:"¿En qué se parecen el rojo y el azul?",o:["Son colores","Son números","Son animales","Son sabores"],a:0},
+  {q:"Zapatos es a pies como gorro es a…",o:["Manos","Cabeza","Cuello","Espalda"],a:1}
+];
+const NUMERO_I=[
+  {q:"2, 4, 6, 8, …",o:["9","10","11","12"],a:1},
+  {q:"5, 10, 15, 20, …",o:["22","24","25","30"],a:2},
+  {q:"20, 18, 16, 14, …",o:["10","11","12","13"],a:2},
+  {q:"3, 6, 9, 12, …",o:["13","14","15","18"],a:2},
+  {q:"1, 2, 4, 8, …",o:["10","12","16","20"],a:2},
+  {q:"Ana tiene 7 láminas y regala 3. ¿Cuántas le quedan?",o:["3","4","5","10"],a:1},
+  {q:"Hay 4 mesas y en cada una hay 5 sillas. ¿Cuántas sillas hay?",o:["9","16","20","25"],a:2},
+  {q:"Un lápiz cuesta $200. ¿Cuánto cuestan 3 lápices?",o:["$400","$500","$600","$800"],a:2},
+  {q:"En una caja hay 12 huevos y se rompen 5. ¿Cuántos quedan enteros?",o:["5","6","7","8"],a:2},
+  {q:"1, 3, 6, 10, …",o:["13","14","15","16"],a:2}
+];
+
+/* Amplitud de dígitos: series fijas (aplicación estandarizada).
+   Cada fila: [longitud, ensayo 1, ensayo 2] */
+const SPAN_A={
+  directa:[
+    [3,"482","715"],[4,"6395","2748"],[5,"58216","39472"],[6,"713849","936152"],
+    [7,"2951647","8364172"],[8,"57192486","24815937"],[9,"384917526","715263849"]
+  ],
+  inversa:[
+    [2,"49","83"],[3,"637","152"],[4,"8412","5739"],[5,"27164","94528"],
+    [6,"518347","926143"],[7,"4917356","8135294"],[8,"63928145","27418596"]
+  ]
+};
+const SPAN_I={
+  directa:[[2,"47","81"],[3,"356","924"],[4,"7143","2865"],[5,"91472","36518"],[6,"249617","573824"]],
+  inversa:[[2,"38","65"],[3,"172","549"],[4,"6238","4715"],[5,"83592","59216"]]
+};
+
+/* Claves / búsqueda de símbolos */
+const KEY_A=[
+  {shape:"circle",fill:"none"},{shape:"square",fill:"solid"},{shape:"triangle",fill:"hatch"},
+  {shape:"diamond",fill:"none"},{shape:"star",fill:"solid"},{shape:"hex",fill:"dot"},
+  {shape:"cross",fill:"none"},{shape:"arrow",fill:"solid"},{shape:"circle",fill:"hatch"}
+];
+const KEY_I=[
+  {shape:"circle",fill:"none"},{shape:"square",fill:"solid"},{shape:"triangle",fill:"none"},
+  {shape:"star",fill:"solid"},{shape:"diamond",fill:"hatch"},{shape:"cross",fill:"solid"}
+];
+
+/* ---------- definición de las formas ---------- */
+const FORMS={
+  adulto:{
+    id:"adulto", label:"Forma A · adultos", who:"16 años en adelante",
+    norm:"Adultos de 16 a 64 años",
+    subtests:[
+      {key:"verbal",   name:"Analogías verbales",   short:"Verbal",    kind:"mc",     items:VERBAL_A,  secs:360, index:"Comprensión verbal",
+       desc:"Relaciones de significado y conceptos compartidos.", norms:{mean:7.5,sd:2.3}},
+      {key:"matrices", name:"Matrices lógicas",     short:"Matrices",  kind:"matrix", specs:MATRIX_A,  secs:720, index:"Razonamiento fluido",
+       desc:"Inducción de reglas en series figurativas.", norms:{mean:8.0,sd:3.0}},
+      {key:"numerico", name:"Razonamiento numérico",short:"Numérico",  kind:"mc",     items:NUMERO_A,  secs:600, index:"Razonamiento cuantitativo",
+       desc:"Series numéricas y problemas aritméticos.", norms:{mean:6.5,sd:2.6}},
+      {key:"digitos",  name:"Amplitud de dígitos",  short:"Dígitos",   kind:"span",   span:SPAN_A,     secs:0,   index:"Memoria de trabajo",
+       desc:"Retención y manipulación de series verbales.", norms:{mean:15,sd:4.0}},
+      {key:"claves",   name:"Claves de símbolos",   short:"Claves",    kind:"coding", symbols:KEY_A, secs:90, index:"Velocidad de procesamiento",
+       desc:"Asociación símbolo–dígito contrarreloj.", norms:{mean:45,sd:12}}
+    ]
+  },
+  nino:{
+    id:"nino", label:"Forma I · 8 años", who:"Niñas y niños de 8;0 a 8;11",
+    norm:"Niñas y niños de 8 años",
+    subtests:[
+      {key:"verbal",   name:"Palabras y semejanzas", short:"Palabras",  kind:"mc",     items:VERBAL_I, secs:360, index:"Comprensión verbal",
+       desc:"Analogías simples y categorías.", norms:{mean:5.5,sd:2.0}},
+      {key:"matrices", name:"Figuras que siguen",    short:"Figuras",   kind:"matrix", specs:MATRIX_I, secs:600, index:"Razonamiento fluido",
+       desc:"Completar el patrón de la cuadrícula.", norms:{mean:6.0,sd:2.4}},
+      {key:"numerico", name:"Números y problemas",   short:"Números",   kind:"mc",     items:NUMERO_I, secs:480, index:"Razonamiento cuantitativo",
+       desc:"Series y problemas de la vida diaria.", norms:{mean:5.0,sd:2.2}},
+      {key:"digitos",  name:"Recuerda los números",  short:"Memoria",   kind:"span",   span:SPAN_I,    secs:0,   index:"Memoria de trabajo",
+       desc:"Repetir series hacia adelante y al revés.", norms:{mean:8.5,sd:2.6}},
+      {key:"claves",   name:"Dibujos con número",    short:"Claves",    kind:"coding", symbols:KEY_I, secs:60, index:"Velocidad de procesamiento",
+       desc:"Escribir el número de cada dibujo, rápido.", norms:{mean:28,sd:9}}
+    ]
+  }
+};
+const CLASSES=[
+  [130,"Muy superior"],[120,"Superior"],[110,"Promedio alto"],[90,"Promedio"],
+  [80,"Promedio bajo"],[70,"Límite"],[-Infinity,"Muy bajo"]
+];
+function classify(iq){for(const c of CLASSES){ if(iq>=c[0]) return c[1]; } return "Muy bajo";}
+
+/* ---------- estado ---------- */
+let S = {
+  screen:"home", form:null, sub:0, answers:{}, raw:{},
+  item:0, sel:null, deadline:0,
+  span:{part:"directa", level:0, trial:0, phase:"ready", shown:"", entry:"", correct:0, fails:0, log:[]},
+  coding:{pos:0, correct:0, errors:0, seq:[], running:false},
+  startedAt:null
+};
+let tickTimer=null, seqTimer=null;
+const $page=document.getElementById("page"), $steps=document.getElementById("steps");
+const $topbar=document.getElementById("topbar"), $tbName=document.getElementById("tb-name");
+const $tbCount=document.getElementById("tb-count"), $tbBar=document.getElementById("tb-bar"), $tbClock=document.getElementById("tb-clock");
+
+function form(){return S.form?FORMS[S.form]:null;}
+function subs(){return form()?form().subtests:[];}
+function cur(){return subs()[S.sub];}
+
+/* ---------- riel de progreso ---------- */
+function renderRail(){
+  const f=form();
+  if(!f){ $steps.innerHTML=`<li data-state="active"><span class="n">—</span><span class="nm">Selección de forma</span></li>`; return; }
+  $steps.innerHTML=f.subtests.map((s,i)=>{
+    const state = S.screen==="results" ? "done" : (i<S.sub?"done":(i===S.sub&&S.screen==="sub"?"active":"todo"));
+    return `<li data-state="${state}"><span class="n">${i+1}</span><span class="nm">${esc(s.short)}</span></li>`;
+  }).join("") + (S.screen==="results"?`<li data-state="active"><span class="n">∑</span><span class="nm">Resultados</span></li>`:"");
+}
+
+/* ---------- cronómetro ---------- */
+function stopTimers(){ if(tickTimer){clearInterval(tickTimer);tickTimer=null;} if(seqTimer){clearTimeout(seqTimer);seqTimer=null;} }
+function startBlockTimer(secs,onEnd){
+  S.deadline=Date.now()+secs*1000;
+  const upd=()=>{
+    const left=(S.deadline-Date.now())/1000;
+    $tbClock.hidden=false; $tbClock.textContent=mmss(left);
+    $tbClock.dataset.low = left<=30 ? "1" : "0";
+    if(left<=0){ clearInterval(tickTimer); tickTimer=null; onEnd(); }
+  };
+  upd(); tickTimer=setInterval(upd,250);
+}
+
+/* ---------- navegación ---------- */
+function go(screen){ S.screen=screen; render(); }
+function chooseForm(id){
+  S.form=id; S.sub=0; S.answers={}; S.raw={}; S.startedAt=Date.now();
+  document.body.classList.toggle("mode-nino", id==="nino");
+  for(const s of subs()) S.answers[s.key]=[];
+  go("intro");
+}
+function beginSub(){
+  S.item=0; S.sel=null;
+  const s=cur();
+  if(s.kind==="span"){
+    S.span={part:"directa",level:0,trial:0,phase:"ready",shown:"",entry:"",correct:0,fails:0,log:[]};
+  }
+  if(s.kind==="coding"){
+    const n=s.symbols.length;
+    const r=mulberry32(4242);
+    const seq=[]; let last=-1;
+    for(let i=0;i<400;i++){ let v=Math.floor(r()*n); if(v===last) v=(v+1)%n; last=v; seq.push(v); }
+    S.coding={pos:0,correct:0,errors:0,seq:seq,running:false};
+  }
+  go("sub");
+}
+function nextSub(){
+  stopTimers(); $tbClock.hidden=true;
+  if(S.sub < subs().length-1){ S.sub++; go("intro"); }
+  else { computeResults(); go("results"); }
+}
+function restart(){
+  stopTimers(); $tbClock.hidden=true;
+  S=Object.assign({},S,{screen:"home",form:null,sub:0,answers:{},raw:{},item:0,sel:null});
+  document.body.classList.remove("mode-nino");
+  render();
+}
+
+/* ---------- puntuación ---------- */
+function scoreSub(s){
+  if(s.kind==="mc"){ const a=S.answers[s.key]||[]; const items=s.items;
+    return items.reduce((acc,it,i)=>acc+((a[i]!=null&&a[i]===it.a)?1:0),0); }
+  if(s.kind==="matrix"){ const a=S.answers[s.key]||[];
+    return s.specs.reduce((acc,sp,i)=>{ const it=buildMatrixItem(sp,i); return acc+((a[i]!=null&&a[i]===it.answer)?1:0); },0); }
+  if(s.kind==="span"){ return S.raw.digitos||0; }
+  if(s.kind==="coding"){ return S.raw.claves||0; }
+  return 0;
+}
+function computeResults(){
+  const f=form(); const out=[]; let sumZ=0;
+  for(const s of f.subtests){
+    const raw=scoreSub(s);
+    const z=clamp((raw-s.norms.mean)/s.norms.sd,-3,3);
+    const scaled=clamp(Math.round(10+3*z),1,19);
+    const idxIQ=Math.round(clamp(100+15*z,55,145));
+    sumZ+=z;
+    out.push({key:s.key,name:s.name,index:s.index,raw:raw,z:z,scaled:scaled,iq:idxIQ,
+      pct:cdf(z)*100, max:s.kind==="mc"?s.items.length:(s.kind==="matrix"?s.specs.length:null)});
+  }
+  const k=f.subtests.length, r=.45;
+  const sdSum=Math.sqrt(k+k*(k-1)*r);
+  const zc=clamp(sumZ/sdSum,-3,3);
+  const iq=Math.round(clamp(100+15*zc,55,145));
+  const sem=15*Math.sqrt(1-0.90);          // fiabilidad compuesta estimada .90
+  const ci=Math.round(1.645*sem);          // intervalo del 90 %
+  S.results={subs:out,iq:iq,ci:ci,pct:cdf(zc)*100,zc:zc,
+    minutes:S.startedAt?Math.round((Date.now()-S.startedAt)/60000):null};
+  try{ localStorage.setItem("umbral:last:"+f.id, JSON.stringify({iq:iq,when:Date.now()})); }catch(e){}
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){
+  renderRail();
+  const f=form();
+  $topbar.hidden = !(S.screen==="sub");
+  if(S.screen!=="sub"){ $tbClock.hidden=true; }
+  if(S.screen==="home") renderHome();
+  else if(S.screen==="intro") renderIntro();
+  else if(S.screen==="sub") renderSub();
+  else if(S.screen==="results") renderResults();
+  window.scrollTo({top:0,behavior:"instant"});
+  snapshot();
+}
+
+function renderHome(){
+  const rows=(id)=>FORMS[id].subtests.map((s,i)=>`
+    <div class="row">
+      <span class="n">${i+1}</span>
+      <span class="nm">${esc(s.name)}</span>
+      <span class="ds">${esc(s.desc)}</span>
+      <span class="tm">${s.secs?(s.secs<120?s.secs+" s":Math.round(s.secs/60)+" min"):"sin límite"}</span>
+    </div>`).join("");
+  let last="";
+  try{
+    const a=JSON.parse(localStorage.getItem("umbral:last:adulto")||"null");
+    const n=JSON.parse(localStorage.getItem("umbral:last:nino")||"null");
+    const bits=[];
+    if(a) bits.push("Forma A: CI "+a.iq);
+    if(n) bits.push("Forma I: CI "+n.iq);
+    if(bits.length) last=`<p class="eyebrow">Última aplicación en este dispositivo · ${bits.join(" · ")}</p>`;
+  }catch(e){}
+  $page.innerHTML=`
+  <div class="wrap wide">
+    <div class="hero">
+      <p class="eyebrow">Batería de aptitudes cognitivas · 5 pruebas · CI de desviación M=100 DE=15</p>
+      <h1>Escala Umbral</h1>
+      <p class="lede">Cinco pruebas administradas en orden fijo, con tiempos controlados y una conversión a puntuaciones típicas: el mismo esqueleto que usan las escalas Wechsler, con ítems propios y baremos abiertos.</p>
+      ${last}
+    </div>
+    <hr class="rule">
+    <div class="picks">
+      <button class="pick" type="button" data-form="adulto">
+        <span class="eyebrow">Forma A</span>
+        <h3>Adultos</h3>
+        <span class="who">Desde los 16 años. 5 pruebas, unos 30 minutos.</span>
+        <span class="specs"><span>62 ítems</span><span>4 bloques cronometrados</span></span>
+        <span class="go">Comenzar →</span>
+      </button>
+      <button class="pick" type="button" data-form="nino">
+        <span class="eyebrow">Forma I</span>
+        <h3>Niñas y niños de 8 años</h3>
+        <span class="who">De 8;0 a 8;11. 5 pruebas, unos 20 minutos.</span>
+        <span class="specs"><span>44 ítems</span><span>Lectura simple</span></span>
+        <span class="go">Comenzar →</span>
+      </button>
+    </div>
+    <div class="note">
+      <strong>Qué es y qué no es esto.</strong>
+      <p>La Escala Umbral reproduce la <em>estructura</em> de una evaluación estandarizada —orden fijo de aplicación, tiempo controlado, regla de discontinuación, puntuaciones escalares e intervalo de confianza—, pero sus baremos son estimaciones abiertas y no proceden de un estudio de tipificación con muestra representativa. No sustituye al WAIS‑IV, al WISC‑V ni a ninguna evaluación profesional, y no sirve para diagnosticar, seleccionar personal ni tomar decisiones escolares. Los ítems son originales: los de las escalas comerciales están protegidos y su difusión invalidaría esas pruebas.</p>
+    </div>
+    <div>
+      <h2 style="font-size:var(--step-2); margin-bottom:10px">Estructura de la Forma A</h2>
+      <div class="struct">${rows("adulto")}</div>
+    </div>
+    <div>
+      <h2 style="font-size:var(--step-2); margin-bottom:10px">Estructura de la Forma I</h2>
+      <div class="struct">${rows("nino")}</div>
+    </div>
+    <details class="meth">
+      <summary>Cómo se calcula el CI</summary>
+      <div>
+        <p>Cada prueba produce una <strong>puntuación directa</strong> (aciertos, ensayos correctos o elementos completados). Esa directa se transforma en <strong>puntuación z</strong> con la media y la desviación típica del grupo normativo correspondiente a la forma, y de ahí a <strong>puntuación escalar</strong> con <code>Ep = 10 + 3z</code>, la métrica clásica de las escalas Wechsler.</p>
+        <p>El <strong>CI total</strong> no es el promedio de los CI parciales: se suman las z y se divide por la desviación típica de esa suma, <code>√(k + k(k−1)r)</code>, con <code>k = 5</code> pruebas y una intercorrelación media estimada <code>r = 0,45</code>. Después <code>CI = 100 + 15z</code>. Así se evita el error habitual de promediar puntuaciones correlacionadas como si fueran independientes.</p>
+        <p>El intervalo de confianza del 90 % usa el error típico de medida <code>ETM = 15·√(1−r<sub>xx</sub>)</code> con fiabilidad compuesta estimada de 0,90, es decir ±8 puntos. Las puntuaciones se truncan en z = ±3 (CI 55–145): sin ítems de suelo y de techo suficientes, nada fuera de ese rango sería interpretable.</p>
+      </div>
+    </details>
+  </div>`;
+  $page.querySelectorAll("[data-form]").forEach(b=>b.addEventListener("click",()=>chooseForm(b.dataset.form)));
+}
+
+function renderIntro(){
+  const s=cur(), f=form(), n=S.sub+1, total=subs().length;
+  const kid = f.id==="nino";
+  let how="";
+  if(s.kind==="mc") how = kid
+    ? `<p>Vas a ver ${s.items.length} preguntas, una por una. Elige la respuesta que te parezca correcta y aprieta <strong>Siguiente</strong>. Si no sabes una, puedes saltarla.</p>`
+    : `<p>${s.items.length} ítems de elección múltiple, uno por pantalla, con una sola respuesta correcta. No se puede volver atrás.</p>`;
+  if(s.kind==="matrix") how = kid
+    ? `<p>Vas a ver una cuadrícula de dibujos con un espacio vacío. Mira cómo cambian los dibujos hacia el lado y hacia abajo, y elige entre las seis opciones el dibujo que falta.</p>`
+    : `<p>${s.specs.length} matrices de 3×3 con la celda inferior derecha vacía. Cada matriz obedece a una o varias reglas que operan por filas y por columnas; hay que inducirlas y elegir entre seis alternativas.</p>`;
+  if(s.kind==="span") how = kid
+    ? `<p>Van a aparecer números, uno por uno. Cuando terminen, escríbelos tú. Primero <strong>en el mismo orden</strong>, y después <strong>al revés</strong>, empezando por el último. Cada vez son un poco más largos.</p>`
+    : `<p>Series de dígitos presentadas a razón de uno por segundo. Primero se reproducen en el mismo orden (directa) y luego en orden inverso. Dos ensayos por longitud; la parte se interrumpe al fallar los dos ensayos de una misma longitud. Sin límite de tiempo para responder.</p>`;
+  if(s.kind==="coding") how = kid
+    ? `<p>Cada dibujo tiene su número. Vas a ver los dibujos uno tras otro y tienes que apretar el número que le toca a cada uno, lo más rápido que puedas, durante <strong>${s.secs} segundos</strong>. La tabla con los números queda siempre arriba.</p>`
+    : `<p>Clave de ${s.symbols.length} símbolos visible en todo momento. Hay que teclear el dígito correspondiente a cada símbolo del flujo, tan rápido como sea posible, durante <strong>${s.secs} segundos</strong>. Se puntúan solo los aciertos.</p>`;
+  const timeLine = s.secs && s.kind!=="coding"
+    ? `<p class="qsub">Tiempo del bloque: <strong>${Math.round(s.secs/60)} minutos</strong>. El cronómetro se muestra arriba y al agotarse se pasa a la prueba siguiente; los ítems no respondidos cuentan como omisiones.</p>`
+    : (s.kind==="coding" ? `<p class="qsub">Duración: <strong>${s.secs} segundos</strong> de trabajo continuo.</p>` : `<p class="qsub">Esta prueba no tiene límite de tiempo.</p>`);
+  let example="";
+  if(s.kind==="matrix"){
+    const demo=buildMatrixItem({r:(i,j)=>({shape:"circle",count:j+1,fill:"solid",rot:0})},0);
+    const g=demo.grid.map((row,i)=>row.map((c,j)=> (i===2&&j===2)
+      ? `<div class="cell blank"></div>`
+      : `<div class="cell">${cellSVG(c)}</div>`).join("")).join("");
+    example=`<div class="matrix-wrap"><p class="eyebrow">Ejemplo resuelto</p><div class="matrix">${g}</div>
+      <p class="qsub" style="text-align:center; max-width:44ch">En cada fila el número de círculos aumenta de uno en uno, así que la casilla vacía lleva <strong>tres círculos</strong>.</p></div>`;
+  }
+  $page.innerHTML=`
+  <div class="wrap">
+    <div class="qhead">
+      <p class="eyebrow">${esc(f.label)} · Prueba ${n} de ${total}</p>
+      <h1 style="font-size:var(--step-4)">${esc(s.name)}</h1>
+      <p class="qsub">${esc(s.desc)} · Mide <strong>${esc(s.index.toLowerCase())}</strong>.</p>
+    </div>
+    <hr class="rule">
+    <div style="display:flex; flex-direction:column; gap:12px; font-size:var(--step-1); line-height:1.5">${how}${timeLine}</div>
+    ${example}
+    <div class="actions"><button class="btn" id="go">Empezar la prueba ${n}</button></div>
+  </div>`;
+  document.getElementById("go").addEventListener("click",beginSub);
+}
+
+/* ---------- barra superior ---------- */
+function topbar(name,done,total){
+  $tbName.textContent=name;
+  $tbCount.textContent = total?`Ítem ${Math.min(done+1,total)} de ${total}`:"";
+  $tbBar.style.width = total?((done/total)*100).toFixed(1)+"%":"0%";
+}
+
+/* ---------- render de prueba ---------- */
+function renderSub(){
+  const s=cur();
+  if(s.kind==="mc") renderMC(s);
+  else if(s.kind==="matrix") renderMatrix(s);
+  else if(s.kind==="span") renderSpan(s);
+  else if(s.kind==="coding") renderCoding(s);
+}
+
+function ensureBlockTimer(s){
+  if(!s.secs) return;
+  if(tickTimer) return;
+  startBlockTimer(s.secs,()=>{ nextSub(); });
+}
+
+function renderMC(s){
+  ensureBlockTimer(s);
+  const it=s.items[S.item];
+  topbar(s.name,S.item,s.items.length);
+  $page.innerHTML=`
+  <div class="wrap">
+    <div class="qhead">
+      <p class="eyebrow">${esc(s.name)} · ítem ${S.item+1}</p>
+      <p class="qtext">${esc(it.q)}</p>
+    </div>
+    <div class="opts">${it.o.map((o,i)=>`
+      <button class="opt" type="button" data-i="${i}" aria-pressed="${S.sel===i}">
+        <span class="k">${LETTERS[i]}</span><span>${esc(o)}</span>
+      </button>`).join("")}
+    </div>
+    <div class="actions">
+      <button class="btn" id="next" ${S.sel==null?"disabled":""}>${S.item===s.items.length-1?"Terminar la prueba":"Siguiente"}</button>
+      <button class="btn ghost" id="skip">No lo sé</button>
+    </div>
+  </div>`;
+  $page.querySelectorAll(".opt").forEach(b=>b.addEventListener("click",()=>{ S.sel=+b.dataset.i; renderMC(s); }));
+  document.getElementById("next").addEventListener("click",()=>advanceMC(s,S.sel));
+  document.getElementById("skip").addEventListener("click",()=>advanceMC(s,null));
+}
+function advanceMC(s,val){
+  S.answers[s.key][S.item]=val;
+  S.sel=null;
+  if(S.item<s.items.length-1){ S.item++; renderMC(s); }
+  else nextSub();
+}
+
+function renderMatrix(s){
+  ensureBlockTimer(s);
+  const idx=S.item, item=buildMatrixItem(s.specs[idx],idx);
+  topbar(s.name,idx,s.specs.length);
+  const g=item.grid.map((row,i)=>row.map((c,j)=> (i===2&&j===2)
+    ? `<div class="cell blank"></div>` : `<div class="cell">${cellSVG(c)}</div>`).join("")).join("");
+  $page.innerHTML=`
+  <div class="wrap">
+    <div class="qhead">
+      <p class="eyebrow">${esc(s.name)} · ítem ${idx+1}</p>
+      <p class="qtext">¿Qué figura completa la cuadrícula?</p>
+    </div>
+    <div class="matrix-wrap">
+      <div class="matrix" role="img" aria-label="Matriz de 3 por 3 con la última casilla vacía">${g}</div>
+      <div class="figopts">${item.options.map((o,i)=>`
+        <button class="figopt" type="button" data-i="${i}" aria-pressed="${S.sel===i}" aria-label="Opción ${LETTERS[i]}">
+          ${cellSVG(o)}<span class="k">${LETTERS[i]}</span>
+        </button>`).join("")}
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="next" ${S.sel==null?"disabled":""}>${idx===s.specs.length-1?"Terminar la prueba":"Siguiente"}</button>
+      <button class="btn ghost" id="skip">No lo sé</button>
+    </div>
+  </div>`;
+  $page.querySelectorAll(".figopt").forEach(b=>b.addEventListener("click",()=>{ S.sel=+b.dataset.i; renderMatrix(s); }));
+  document.getElementById("next").addEventListener("click",()=>advanceMatrix(s,S.sel));
+  document.getElementById("skip").addEventListener("click",()=>advanceMatrix(s,null));
+}
+function advanceMatrix(s,val){
+  S.answers[s.key][S.item]=val; S.sel=null;
+  if(S.item<s.specs.length-1){ S.item++; renderMatrix(s); }
+  else nextSub();
+}
+
+/* ---------- amplitud de dígitos ---------- */
+function spanList(s){ return s.span[S.span.part]; }
+function spanTotalTrials(s){ return (s.span.directa.length+s.span.inversa.length)*2; }
+function spanDone(s){
+  const d=s.span.directa.length*2;
+  return S.span.part==="directa" ? (S.span.level*2+S.span.trial) : d + (S.span.level*2+S.span.trial);
+}
+function renderSpan(s){
+  const list=spanList(s), row=list[S.span.level];
+  topbar(s.name,spanDone(s),spanTotalTrials(s));
+  $tbClock.hidden=true;
+  const kid=form().id==="nino";
+  const partName = S.span.part==="directa" ? (kid?"En el mismo orden":"Serie directa") : (kid?"Al revés":"Serie inversa");
+  const hint = S.span.part==="directa"
+    ? (kid?"Escribe los números en el mismo orden en que aparecieron.":"Reproduzca la serie en el mismo orden.")
+    : (kid?"Escribe los números al revés: primero el último que viste.":"Reproduzca la serie en orden inverso.");
+  let stage="";
+  if(S.span.phase==="ready"){
+    stage=`<div class="stage"><div>
+      <p class="eyebrow">${partName} · longitud ${row[0]} · ensayo ${S.span.trial+1} de 2</p>
+      <p style="font-size:var(--step-1); margin-top:8px; max-width:38ch">${esc(hint)}</p>
+      <div class="actions" style="justify-content:center"><button class="btn" id="show">Mostrar la serie</button></div>
+    </div></div>`;
+  } else if(S.span.phase==="show"){
+    stage=`<div class="stage"><div class="digit" id="dig">${S.span.shown===""?"·":esc(S.span.shown)}</div></div>`;
+  } else {
+    stage=`<div class="stage"><div style="display:flex;flex-direction:column;gap:14px;align-items:center;width:100%">
+      <p class="eyebrow">${esc(hint)}</p>
+      <div class="spaninput mono" id="entry" aria-live="polite">${S.span.entry?esc(S.span.entry):"&nbsp;"}</div>
+      <div class="pad">
+        ${[1,2,3,4,5,6,7,8,9].map(d=>`<button type="button" data-d="${d}">${d}</button>`).join("")}
+        <button type="button" data-d="0">0</button>
+        <button type="button" class="wide" data-act="del">Borrar</button>
+        <button type="button" class="wide" data-act="ok">Aceptar</button>
+      </div>
+    </div></div>`;
+  }
+  $page.innerHTML=`
+  <div class="wrap">
+    <div class="qhead">
+      <p class="eyebrow">${esc(s.name)} · ${partName}</p>
+      <p class="qtext">${S.span.phase==="show"?"Memoriza…":(S.span.phase==="ready"?"Preparado":"Tu respuesta")}</p>
+    </div>
+    ${stage}
+    <p class="trialmeta">Ensayos correctos: ${S.span.correct} · longitud actual: ${row[0]} dígitos</p>
+  </div>`;
+  if(S.span.phase==="ready"){
+    document.getElementById("show").addEventListener("click",()=>playSpan(s));
+  } else if(S.span.phase==="input"){
+    $page.querySelectorAll(".pad button").forEach(b=>b.addEventListener("click",()=>{
+      if(b.dataset.act==="del") S.span.entry=S.span.entry.slice(0,-1);
+      else if(b.dataset.act==="ok") return submitSpan(s);
+      else if(S.span.entry.length<12) S.span.entry+=b.dataset.d;
+      document.getElementById("entry").innerHTML=S.span.entry?esc(S.span.entry):"&nbsp;";
+    }));
+  }
+}
+function playSpan(s){
+  const list=spanList(s), row=list[S.span.level];
+  const seq=row[1+S.span.trial];
+  S.span.phase="show"; S.span.shown=""; renderSpan(s);
+  let i=0;
+  const step=()=>{
+    const el=document.getElementById("dig");
+    if(i<seq.length){
+      S.span.shown=seq[i];
+      if(el) el.textContent=seq[i];
+      i++;
+      seqTimer=setTimeout(()=>{ const e2=document.getElementById("dig"); if(e2) e2.textContent="·"; seqTimer=setTimeout(step,250); },850);
+    } else {
+      S.span.phase="input"; S.span.entry=""; renderSpan(s);
+    }
+  };
+  seqTimer=setTimeout(step,600);
+}
+function submitSpan(s){
+  const list=spanList(s), row=list[S.span.level];
+  const seq=row[1+S.span.trial];
+  const target = S.span.part==="directa" ? seq : seq.split("").reverse().join("");
+  const ok = S.span.entry===target;
+  if(ok){ S.span.correct++; S.span.fails=0; } else { S.span.fails++; }
+  S.span.log.push({part:S.span.part,len:row[0],ok:ok});
+  const twoFails = (S.span.trial===1 && S.span.fails>=2);
+  if(twoFails || (S.span.trial===1 && S.span.level===list.length-1)){
+    if(S.span.part==="directa"){ S.span.part="inversa"; S.span.level=0; S.span.trial=0; S.span.fails=0; S.span.phase="ready"; renderSpan(s); return; }
+    S.raw.digitos=S.span.correct; nextSub(); return;
+  }
+  if(S.span.trial===0){ S.span.trial=1; } else { S.span.trial=0; S.span.level++; S.span.fails=0; }
+  S.span.phase="ready"; S.span.entry=""; renderSpan(s);
+}
+
+/* ---------- claves ---------- */
+function symbolSVG(sym,size){
+  return `<svg viewBox="0 0 100 100" aria-hidden="true" style="width:${size}px;height:${size}px">
+    <g transform="translate(50,50)">${shapeMarkup(sym.shape,34,sym.fill)}</g></svg>`;
+}
+function renderCoding(s){
+  const keys=s.symbols;
+  topbar(s.name,Math.min(S.coding.pos,120),120);
+  const keyTable=`<div class="keytable" style="grid-template-columns:repeat(${keys.length},minmax(46px,1fr))">
+    ${keys.map((k,i)=>`<div class="kc">${symbolSVG(k,34)}<div class="d">${i+1}</div></div>`).join("")}
+  </div>`;
+  if(!S.coding.running){
+    $tbClock.hidden=true;
+    $page.innerHTML=`
+    <div class="wrap">
+      <div class="qhead">
+        <p class="eyebrow">${esc(s.name)} · ${s.secs} segundos</p>
+        <p class="qtext">Cada símbolo tiene su número</p>
+        <p class="qsub">Teclea (o pulsa) el número que corresponde al símbolo resaltado. Va contrarreloj: responde lo más rápido que puedas sin equivocarte.</p>
+      </div>
+      ${keyTable}
+      <div class="actions"><button class="btn" id="start">Empezar los ${s.secs} segundos</button></div>
+    </div>`;
+    document.getElementById("start").addEventListener("click",()=>{
+      S.coding.running=true;
+      renderCoding(s);
+      startBlockTimer(s.secs,()=>{ S.raw.claves=S.coding.correct; nextSub(); });
+    });
+    return;
+  }
+  const seq=S.coding.seq, p=S.coding.pos;
+  const view=[];
+  for(let i=p-2;i<=p+4;i++){ if(i>=0&&i<seq.length) view.push([i,seq[i]]); }
+  $page.innerHTML=`
+  <div class="wrap">
+    ${keyTable}
+    <div class="stream">${view.map(v=>`<div class="sitem ${v[0]===p?"cur":(v[0]<p?"done":"")}">${symbolSVG(keys[v[1]],v[0]===p?46:34)}</div>`).join("")}</div>
+    <div class="pad">
+      ${keys.map((k,i)=>`<button type="button" data-d="${i+1}">${i+1}</button>`).join("")}
+    </div>
+    <p class="hitline">Aciertos ${S.coding.correct} · errores ${S.coding.errors}</p>
+  </div>`;
+  $page.querySelectorAll(".pad button").forEach(b=>b.addEventListener("click",()=>codingInput(s,+b.dataset.d)));
+}
+function codingInput(s,d){
+  if(!S.coding.running) return;
+  const want=S.coding.seq[S.coding.pos]+1;
+  if(d===want) S.coding.correct++; else S.coding.errors++;
+  S.coding.pos++;
+  if(S.coding.pos>=S.coding.seq.length){ stopTimers(); S.raw.claves=S.coding.correct; nextSub(); return; }
+  renderCoding(s);
+}
+document.addEventListener("keydown",(e)=>{
+  if(S.screen!=="sub") return;
+  const s=cur();
+  if(s.kind==="coding" && S.coding.running){
+    const d=parseInt(e.key,10);
+    if(d>=1&&d<=s.symbols.length){ e.preventDefault(); codingInput(s,d); }
+    return;
+  }
+  if(s.kind==="span" && S.span.phase==="input"){
+    if(/^[0-9]$/.test(e.key)){ if(S.span.entry.length<12) S.span.entry+=e.key; const el=document.getElementById("entry"); if(el) el.innerHTML=esc(S.span.entry); }
+    else if(e.key==="Backspace"){ e.preventDefault(); S.span.entry=S.span.entry.slice(0,-1); const el=document.getElementById("entry"); if(el) el.innerHTML=S.span.entry?esc(S.span.entry):"&nbsp;"; }
+    else if(e.key==="Enter"){ e.preventDefault(); submitSpan(s); }
+    return;
+  }
+  if(s.kind==="mc"||s.kind==="matrix"){
+    const i=LETTERS.indexOf(e.key.toUpperCase());
+    const n = s.kind==="mc" ? s.items[S.item].o.length : 6;
+    if(i>=0&&i<n){ S.sel=i; renderSub(); }
+    else if(e.key==="Enter"&&S.sel!=null){ if(s.kind==="mc") advanceMC(s,S.sel); else advanceMatrix(s,S.sel); }
+  }
+});
+
+/* ---------- resultados ---------- */
+function gaussSVG(iq,ci){
+  const W=700,H=250,padL=30,padR=30,base=H-48;
+  const x=v=>padL+((v-50)/100)*(W-padL-padR);
+  const pdf=v=>Math.exp(-.5*Math.pow((v-100)/15,2));
+  const yTop=40, y=v=>base-pdf(v)*(base-yTop);
+  let d="M "+x(50)+" "+base;
+  for(let v=50;v<=150;v+=1) d+=" L "+x(v).toFixed(1)+" "+y(v).toFixed(1);
+  d+=" L "+x(150)+" "+base+" Z";
+  let area="M "+x(50)+" "+base;
+  for(let v=50;v<=Math.min(iq,150);v+=1) area+=" L "+x(v).toFixed(1)+" "+y(v).toFixed(1);
+  area+=" L "+x(Math.min(iq,150)).toFixed(1)+" "+base+" Z";
+  const ticks=[55,70,85,100,115,130,145];
+  const tickM=ticks.map(t=>`<line x1="${x(t)}" y1="${base}" x2="${x(t)}" y2="${base+5}" style="stroke:var(--line-2);stroke-width:1"/>
+    <text x="${x(t)}" y="${base+20}" text-anchor="middle" class="gtick">${t}</text>`).join("");
+  const lo=clamp(iq-ci,50,150), hi=clamp(iq+ci,50,150);
+  const mx=x(clamp(iq,50,150));
+  return `<svg class="gauss" viewBox="0 0 ${W} ${H}" role="img" aria-label="Curva normal de la población con la puntuación marcada en ${iq}">
+    <rect x="${x(lo)}" y="${yTop-8}" width="${x(hi)-x(lo)}" height="${base-yTop+8}" style="fill:var(--accent);opacity:.10"/>
+    <path d="${d}" style="fill:var(--surface-2);stroke:var(--line-2);stroke-width:1.2"/>
+    <path d="${area}" style="fill:var(--accent);opacity:.26"/>
+    <line x1="${padL}" y1="${base}" x2="${W-padR}" y2="${base}" style="stroke:var(--line-2);stroke-width:1"/>
+    ${tickM}
+    <line x1="${mx}" y1="${yTop-14}" x2="${mx}" y2="${base}" style="stroke:var(--ink);stroke-width:2"/>
+    <text x="${mx}" y="${yTop-20}" text-anchor="middle" class="gmark">CI ${iq}</text>
+  </svg>`;
+}
+function renderResults(){
+  const R=S.results, f=form();
+  const cls=classify(R.iq);
+  const sorted=R.subs.slice().sort((a,b)=>b.scaled-a.scaled);
+  const top=sorted[0], bottom=sorted[sorted.length-1];
+  const spread=top.scaled-bottom.scaled;
+  const perfil = spread>=6
+    ? `El perfil es <strong>heterogéneo</strong> (${spread} puntos escalares entre la prueba más alta y la más baja): con esa dispersión, el CI total resume menos de lo que parece y conviene leer cada índice por separado.`
+    : `El perfil es <strong>homogéneo</strong> (${spread} puntos escalares de diferencia entre extremos), de modo que el CI total representa razonablemente bien el conjunto.`;
+  const idxRows=R.subs.map(s=>{
+    const pos=v=>((clamp(v,40,160)-40)/120*100);
+    return `<div class="idxrow">
+      <span class="nm">${esc(s.index)}<small>${esc(s.name)}${s.max?" · "+s.raw+"/"+s.max+" aciertos":" · "+s.raw+" puntos"}</small></span>
+      <span class="track" role="img" aria-label="Puntuación ${s.iq}">
+        <u style="left:${pos(85)}%; width:${pos(115)-pos(85)}%"></u>
+        <b style="left:${pos(100)}%"></b>
+        <i style="left:${pos(s.iq)}%"></i>
+      </span>
+      <span class="num">${s.iq}</span>
+      <span class="pc">Ep ${s.scaled}</span>
+    </div>`;
+  }).join("");
+  const tableRows=R.subs.map(s=>`<tr>
+      <td>${esc(s.name)}</td><td class="n">${s.raw}${s.max?" / "+s.max:""}</td>
+      <td class="n">${s.scaled}</td><td class="n">${s.iq}</td><td class="n">${pctText(s.pct)}</td></tr>`).join("");
+  $page.innerHTML=`
+  <div class="wrap wide">
+    <div class="qhead">
+      <p class="eyebrow">${esc(f.label)} · informe de resultados${R.minutes?" · "+R.minutes+" min de aplicación":""}</p>
+      <h1 style="font-size:var(--step-4)">Perfil cognitivo</h1>
+    </div>
+    <div class="score-hero">
+      <div class="bignum">
+        <span class="lab">CI total</span>
+        <span class="v">${R.iq}</span>
+        <span class="ci">IC 90 %: ${R.iq-R.ci}–${R.iq+R.ci}</span>
+        <span class="class-pill">${esc(cls)}</span>
+        <span class="ci">Percentil ${pctText(R.pct)}</span>
+      </div>
+      <div>${gaussSVG(R.iq,R.ci)}</div>
+    </div>
+    <div class="readout">
+      <div class="r"><div class="k">Grupo normativo</div><div class="v" style="font-size:1rem">${esc(f.norm)}</div></div>
+      <div class="r"><div class="k">Percentil</div><div class="v">${pctText(R.pct)}</div></div>
+      <div class="r"><div class="k">Error típico de medida</div><div class="v">±${R.ci}</div></div>
+      <div class="r"><div class="k">Prueba más alta</div><div class="v" style="font-size:1rem">${esc(top.index)}</div></div>
+    </div>
+    <div>
+      <h2 style="font-size:var(--step-2); margin-bottom:6px">Índices</h2>
+      <p class="qsub" style="margin-bottom:8px">La franja clara marca el intervalo promedio (85–115), donde se sitúa el 68 % de la población; la línea vertical fina es la media de 100.</p>
+      <div class="idxlist">${idxRows}</div>
+    </div>
+    <div>
+      <h2 style="font-size:var(--step-2); margin-bottom:8px">Lectura del perfil</h2>
+      <p style="color:var(--ink-2)">Un CI de ${R.iq} sitúa el rendimiento en el percentil ${pctText(R.pct)}: supera aproximadamente al ${pctText(R.pct)} % del grupo normativo (${esc(f.norm.toLowerCase())}). ${perfil} El punto fuerte relativo está en <strong>${esc(top.index.toLowerCase())}</strong> (Ep ${top.scaled}) y el punto débil relativo en <strong>${esc(bottom.index.toLowerCase())}</strong> (Ep ${bottom.scaled}). Recuerde que el intervalo de confianza importa más que el número exacto: repeticiones de esta misma batería oscilarían normalmente dentro del rango ${R.iq-R.ci}–${R.iq+R.ci}.</p>
+    </div>
+    <div class="tablecard scroller">
+      <table class="tbl">
+        <thead><tr><th>Prueba</th><th style="text-align:right">Directa</th><th style="text-align:right">Escalar</th><th style="text-align:right">Índice</th><th style="text-align:right">Pc</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+    <div class="note">
+      <strong>Cómo interpretar esto con prudencia.</strong>
+      <p>Los baremos de la Escala Umbral son estimaciones abiertas, no el resultado de un estudio de tipificación: el número puede desplazarse varios puntos respecto de una prueba profesional. Una sola aplicación, hecha en casa y sin examinador, no diagnostica altas capacidades, discapacidad intelectual ni dificultades de aprendizaje. En niños de 8 años el rendimiento depende mucho del sueño, la motivación y la comprensión lectora del momento; un resultado bajo es motivo para repetir en mejores condiciones, no para sacar conclusiones. Ante una duda real, la evaluación la hace un psicólogo con un WISC‑V o un WAIS‑IV completos.</p>
+    </div>
+    <div class="actions no-print">
+      <button class="btn" id="again">Repetir la batería</button>
+      <button class="btn ghost" id="other">Aplicar la otra forma</button>
+      <button class="btn ghost" id="print">Imprimir o guardar en PDF</button>
+    </div>
+  </div>`;
+  document.getElementById("again").addEventListener("click",()=>chooseForm(f.id));
+  document.getElementById("other").addEventListener("click",()=>chooseForm(f.id==="adulto"?"nino":"adulto"));
+  document.getElementById("print").addEventListener("click",()=>window.print());
+}
+
+/* ---------- persistencia de sesión en caliente ---------- */
+function snapshot(){
+  try{ if(window.claude&&window.claude.hot&&window.claude.hot.snapshot) window.claude.hot.snapshot({S:S}); }catch(e){}
+}
+function boot(data){
+  if(data&&data.S&&data.S.form){
+    S=data.S;
+    document.body.classList.toggle("mode-nino",S.form==="nino");
+    if(S.screen==="sub"&&(cur().kind==="coding")) S.coding.running=false;
+    if(S.screen==="sub"&&cur().kind==="span") S.span.phase="ready";
+  }
+  render();
+}
+document.getElementById("btn-restart").addEventListener("click",restart);
+try{
+  if(window.claude&&window.claude.hot&&window.claude.hot.ready) window.claude.hot.ready(boot);
+  else boot((window.claude&&window.claude.hot&&window.claude.hot.data)||{});
+}catch(e){ boot({}); }
+</script>

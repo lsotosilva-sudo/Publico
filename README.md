@@ -9,3 +9,5 @@ Páginas y herramientas públicas. No contiene claves ni datos privados.
   El mensaje llega en el link (#m=...), nunca se envía a un servidor.
 - `txflow/firma.html` — firma con la wallet (eth_signTypedData_v4) el ApproveAgent de un agente de TxFlow
   (opera, no retira). Los datos llegan en el link (#t=...), nunca se envían a un servidor.
+- `escala-umbral/` — Escala Umbral: batería interactiva de aptitudes cognitivas (adultos y niños de 8 años),
+  en un único archivo estático. Abrir en https://lsotosilva-sudo.github.io/Publico/escala-umbral/
